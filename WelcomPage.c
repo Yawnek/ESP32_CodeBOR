@@ -1,72 +1,134 @@
-/*********
-  Complete project details at http://randomnerdtutorials.com  
-*********/
+#include <WiFi.h>
+#include <WebServer.h>
 
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+// Replace with your desired credentials
+const char* ssid = "ESP32-Access-Point";
+const char* password = "12345678";
 
-/*#include <SPI.h>
-#define BME_SCK 18
-#define BME_MISO 19
-#define BME_MOSI 23
-#define BME_CS 5*/
+// Relay PIN
+const int relayPin = 5;
 
-#define SEALEVELPRESSURE_HPA (1013.25)
-
-Adafruit_BME280 bme; // I2C
-//Adafruit_BME280 bme(BME_CS); // hardware SPI
-//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
-
-unsigned long delayTime;
+WebServer server(80);
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println(F("BME280 test"));
+  Serial.begin(115200);
+  // Set up the ESP as an Access Point
+  WiFi.softAP(ssid, password);
 
-  bool status;
+  // Print the IP address
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP Address: ");
+  Serial.println(IP);
 
-  // default settings
-  // (you can also pass in a Wire library object like &Wire2)
-  status = bme.begin(0x76);  
-  if (!status) {
-    Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    while (1);
-  }
+  // Define server routes
+  server.on("/", handleRoot);
+  server.on("/sensor-data", handleSensorData);
+  server.on("/control", handleControl);
+  server.on("/toggle-relay", handleToggleRelay);
 
-  Serial.println("-- Default Test --");
-  delayTime = 1000;
+  // Start server
+  server.begin();
 
-  Serial.println();
+  // Setup the relay pin as output and initialize to LOW (relay off)
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW);
 }
 
-
-void loop() { 
-  printValues();
-  delay(delayTime);
+void loop() {
+  // Handle client requests
+  server.handleClient();
 }
 
-void printValues() {
-  Serial.print("Temperature = ");
-  Serial.print(bme.readTemperature());
-  Serial.println(" *C");
-  
-  // Convert temperature to Fahrenheit
-  /*Serial.print("Temperature = ");
-  Serial.print(1.8 * bme.readTemperature() + 32);
-  Serial.println(" *F");*/
-  
-  Serial.print("Pressure = ");
-  Serial.print(bme.readPressure() / 100.0F);
-  Serial.println(" hPa");
+void handleRoot() {
+  String HTML = R"=====(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Web Server</title>
+<style>
+  body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; }
+  .container { max-width: 600px; margin: 50px auto; padding: 20px; background-color: #fff; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+  h1 { color: #0066ff; text-align: center; }
+  ul { list-style-type: none; padding: 0; }
+  li a { display: block; color: #333; background-color: #e7e7e7; padding: 10px 20px; text-decoration: none; margin: 10px 0; text-align: center; }
+  li a:hover { background-color: #ddd; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Welcome to the ESP32 Web Server</h1>
+  <ul>
+    <li><a href='/sensor-data'>Sensor Data</a></li>
+    <li><a href='/control'>Control Panel</a></li>
+  </ul>
+</div>
+</body>
+</html>
+)=====";
+  server.send(200, "text/html", HTML);
+}
 
-  Serial.print("Approx. Altitude = ");
-  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-  Serial.println(" m");
+void handleSensorData() {
+  String sensorDataHTML = R"=====(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sensor Data</title>
+<style>
+  body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; }
+  .container { max-width: 600px; margin: 50px auto; padding: 20px; background-color: #fff; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); text-align: center; }
+  h1 { color: #0066ff; }
+  p { margin: 20px 0; }
+  a { color: #333; padding: 10px 20px; text-decoration: none; background-color: #e7e7e7; }
+  a:hover { background-color: #ddd; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Sensor Data</h1>
+  <p>Temperature: --°C</p>
+  <p>Humidity: --%</p>
+  <p><a href='/'>Home</a></p>
+</div>
+</body>
+</html>
+)=====";
+  server.send(200, "text/html", sensorDataHTML);
+}
 
-  Serial.print("Humidity = ");
-  Serial.print(bme.readHumidity());
-  Serial.println(" %");
+void handleControl() {
+  String controlHTML = R"=====(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control Panel</title>
+<style>
+  body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; }
+  .container { max-width: 600px; margin: 50px auto; padding: 20px; background-color: #fff; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); text-align: center; }
+  h1 { color: #0066ff; }
+  button { padding: 10px 20px; margin: 20px 0; background-color: #4CAF50; border: none; color: white; cursor: pointer; }
+  button:hover { background-color: #45a049; }
+  a { color: #333; padding: 10px 20px; text-decoration: none; background-color: #e7e7e7; }
+  a:hover { background-color: #ddd; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Control Panel</h1>
+  <button onclick="location.href='/toggle-relay'">Toggle Relay</button>
+  <p><a href='/'>Home</a></p>
+</div>
+</body>
+</html>
+)=====";
+  server.send(200, "text/html", controlHTML);
+}
 
-  Serial.println();
+void handleToggleRelay() {
+  digitalWrite(relayPin, !digitalRead(relayPin)); // Toggle the relay state
+  server.sendHeader("Location", "/control", true); // Redirect back to the control page
+  server.send(302, "text/plain", ""); // HTTP redirect
 }
