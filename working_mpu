@@ -1,0 +1,26 @@
+#include <Wire.h>
+
+const int MPU_ADDRESS = 0x48; // The I2C address of the MPU
+
+void setup() {
+  Wire.begin(); // Initialize the I2C bus
+  Serial.begin(115200); // Start serial communication at 115200 baud
+  while (!Serial); // Wait for the serial port to connect - only needed on some boards
+
+  Serial.println("\nChecking for MPU at address 0x48...");
+
+  // Try to initiate communication with the MPU
+  Wire.beginTransmission(MPU_ADDRESS);
+  byte error = Wire.endTransmission();
+
+  // Check if the device at 0x48 acknowledged the communication
+  if (error == 0) {
+    Serial.println("MPU detected at address 0x48!");
+  } else {
+    Serial.println("No MPU detected at address 0x48.");
+  }
+}
+
+void loop() {
+  // Nothing to do here
+}
