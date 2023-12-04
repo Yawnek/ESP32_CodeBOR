@@ -1,0 +1,68 @@
+#include <Wire.h>
+
+// MPU I2C address
+const int MPU_ADDRESS = 0x48;
+
+// MPU registers
+const int ACCEL_XOUT_H = 0x3B;
+const int GYRO_XOUT_H = 0x43;
+const int TEMP_OUT_H = 0x41; // Temperature high byte register
+
+void setup() {
+    Wire.begin(); // Initialize I2C
+    Serial.begin(9600); // Start serial communication at 115200 baud
+
+    // Initialize MPU
+    Wire.beginTransmission(MPU_ADDRESS);
+    Wire.write(0x6B); // Power management register
+    Wire.write(0);    // Wake up the MPU
+    Wire.endTransmission(true);
+
+
+}
+
+void loop() {
+    // Read accelerometer data
+    Wire.beginTransmission(MPU_ADDRESS);
+    Wire.write(ACCEL_XOUT_H);
+    Wire.endTransmission(false);
+    Wire.requestFrom(MPU_ADDRESS, 6, true); // Request 6 bytes
+
+    if (Wire.available() == 6) {
+        int16_t ax = Wire.read() << 8 | Wire.read();
+        int16_t ay = Wire.read() << 8 | Wire.read();
+        int16_t az = Wire.read() << 8 | Wire.read();
+        Serial.print("Accel X: "); Serial.print(ax);
+        Serial.print(" Accel Y: "); Serial.print(ay);
+        Serial.print(" Accel Z: "); Serial.println(az);
+    }
+
+    // Read gyroscope data
+    Wire.beginTransmission(MPU_ADDRESS);
+    Wire.write(GYRO_XOUT_H);
+    Wire.endTransmission(false);
+    Wire.requestFrom(MPU_ADDRESS, 6, true); // Request 6 bytes
+
+    if (Wire.available() == 6) {
+        int16_t gx = Wire.read() << 8 | Wire.read();
+        int16_t gy = Wire.read() << 8 | Wire.read();
+        int16_t gz = Wire.read() << 8 | Wire.read();
+        Serial.print("Gyro X: "); Serial.print(gx);
+        Serial.print(" Gyro Y: "); Serial.print(gy);
+        Serial.print(" Gyro Z: "); Serial.println(gz);
+    }
+
+    // Read temperature data
+    Wire.beginTransmission(MPU_ADDRESS);
+    Wire.write(TEMP_OUT_H);
+    Wire.endTransmission(false);
+    Wire.requestFrom(MPU_ADDRESS, 2, true); // Request 2 bytes for temperature
+
+    if (Wire.available() == 2) {
+        int16_t tempRaw = Wire.read() << 8 | Wire.read();
+        float temperature = (tempRaw / 340.0) + 36.53; // Convert to temperature in °C
+        Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" °C");
+    }
+
+    delay(1000); // Delay before the next reading
+}
