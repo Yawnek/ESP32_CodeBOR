@@ -1,0 +1,39 @@
+#include <Wire.h>
+#include <JY901.h>
+#include <Math.h>
+
+const int relay1 = 26;
+const int relay2 = 27;
+
+void setup() {
+  Serial.begin(115200);
+  JY901.StartIIC();
+  pinMode(relay1, OUTPUT);
+  pinMode(relay2, OUTPUT);
+} 
+
+void loop() {
+  JY901.GetMag();
+  float magX = JY901.stcMag.h[0];
+  float magY = JY901.stcMag.h[1];
+  float azimuth = atan2(magY, magX) * (180 / PI);
+  if (azimuth < 0) {
+    azimuth += 360;
+  }
+
+  Serial.print("Azimuth: "); Serial.println(azimuth);
+
+  if (azimuth >= 270 && azimuth < 300) {
+    digitalWrite(relay1, HIGH); // Set relay 1 HIGH
+    digitalWrite(relay2, HIGH); // Set relay 2 HIGH
+    Serial.println("Relay 1: High, Relay 2: High");
+  } else if (azimuth >= 300 && azimuth <= 360) {
+    digitalWrite(relay1, HIGH); // Set relay 1 HIGH
+    digitalWrite(relay2, LOW);  // Set relay 2 LOW
+    Serial.println("Relay 1: High, Relay 2: Low");
+  } else {
+    // Optional: Handle other azimuth values if needed
+  }
+
+  delay(100);
+}
